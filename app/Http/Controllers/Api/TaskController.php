@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
-use Illuminate\Http\Request;
-use Throwable;
+use App\Http\Requests\TaskStoreRequest;
+use App\Http\Requests\TaskUpdateRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Date;
 
 class TaskController extends Controller
 {
@@ -15,39 +17,51 @@ class TaskController extends Controller
         return response()->json($tasks, 200);
     }
 
-    public function store(Request $request)
+    public function store(TaskStoreRequest $request)
     {
-        $request->validate([
-            'title' => 'required',
-            'description' => 'required',
-            'completed' => 'required',
-            'username' => 'required',
-        ]);
-
         $task = Task::create($request->all());
 
-        return response()->json(['task' => $task], 200);
+        return response()->json(["Task Id {$task->id} created" => $task], 200);
     }
 
-    public function getTaskById(int $id)
+    public function getTaskById($id)
     {
-        $task = Task::where('id' , '=' , $id)->first();
+        $this->validateTaskId($id);
 
-        if ($task)
+        try
         {
-            return response()->json([
-                'task' => $task
-            ]);
+            $task = Task::where("id" , "=" , $id)->first();
+
+            if ($task)
+            {
+                return response()->json([
+                    "task" => $task
+                ]);
+            }
+            else
+            {
+                return response()->json(["Error" => "Task id '{$id}' not found"], 400);
+            }
         }
-        else
+        catch (\Exception $e)
         {
-            return response()->json(['Error' => "Task id {$id} not found"], 400);
+            return response()->json(["Error: {$e}"], 400);
         }
     }
 
-    public function update(Request $request, string $id)
+    public function update($id, TaskUpdateRequest $request)
     {
-        //
+        $this->validateTaskId($id);
+
+        try
+        {
+            $task = Task::whereId($id)->update($request->all());
+            return response()->json(["Task Id {$id} updated"], 200);
+        }
+        catch (\Exception $e)
+        {
+            return response()->json(["Error: {$e}"], 400);
+        }
     }
 
     public function delete($id)
@@ -61,24 +75,22 @@ class TaskController extends Controller
             if ($task)
             {
                 $task->delete();
-                return response()->json(['Status' => "Task id {$id} deleted"], 200);
+                return response()->json(["Task id '{$id}' deleted"], 200);
             }
             else
             {
-                return response()->json(['Error' => "Task id {$id} not found"], 400);
+                return response()->json(["Error" => "Task id '{$id}' not found"], 400);
             }
         }
-        catch (Throwable $e)
+        catch (\Exception $e)
         {
             return response("Error: {$e}", 400);
         }
     }
 
-    private function validateTaskId ($id)
+    private function validateTaskId($id)
     {
-        if (!is_int($id))
-            return response()->json(['Error' => "Id must be a number, '{$id}' value given"], 400);
-        else
-            echo "cool";
+        if(!intval((int)$id))
+            throw new HttpResponseException(response()->json(["Error" => "Id must be an integer, '{$id}' value given"], 400));
     }
 }

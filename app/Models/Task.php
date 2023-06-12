@@ -10,7 +10,9 @@ class Task extends Model
         'title',
         'description',
         'completed',
+        'completed_at',
         'deleted',
+        'deleted_at',
         'username',
     ];
 
