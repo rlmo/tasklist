@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  tasklist-api:
+    build:
+      context: .
+    container_name: tasklist-api
+    working_dir: /usr/share/nginx/html
+    ports:
+      - 8000:8000
+    volumes:
+      - ./:/usr/share/nginx/html
+    restart: always

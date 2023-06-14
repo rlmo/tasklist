@@ -13,15 +13,23 @@ class TaskController extends Controller
 {
     public function index()
     {
-        $tasks = Task::all();
+        $tasks = Task::whereDeleted(false)->get();
+
         return response()->json($tasks, 200);
     }
 
     public function store(TaskStoreRequest $request)
     {
-        $task = Task::create($request->all());
+        try
+        {
+            $task = Task::create($request->all());
 
-        return response()->json(["Task Id {$task->id} created" => $task], 200);
+            return response()->json(["Task Id {$task->id} created" => $task], 200);
+        }
+        catch(\Exception $e)
+        {
+            return response()->json(["Error: {$e}"], 400);
+        }
     }
 
     public function getTaskById($id)
@@ -30,20 +38,18 @@ class TaskController extends Controller
 
         try
         {
-            $task = Task::where("id" , "=" , $id)->first();
+            $task = Task::find($id);
 
-            if ($task)
+            if($task)
             {
-                return response()->json([
-                    "task" => $task
-                ]);
+                return response()->json($task, 200);
             }
             else
             {
                 return response()->json(["Error" => "Task id '{$id}' not found"], 400);
             }
         }
-        catch (\Exception $e)
+        catch(\Exception $e)
         {
             return response()->json(["Error: {$e}"], 400);
         }
@@ -55,10 +61,19 @@ class TaskController extends Controller
 
         try
         {
-            $task = Task::whereId($id)->update($request->all());
+            $task = Task::find($id);
+
+            if($request->completed)
+            {
+                $task->completed_at = Date::now();
+                $task->save();
+            }
+            
+            Task::whereId($id)->update($request->all());
+
             return response()->json(["Task Id {$id} updated"], 200);
         }
-        catch (\Exception $e)
+        catch(\Exception $e)
         {
             return response()->json(["Error: {$e}"], 400);
         }
@@ -72,9 +87,13 @@ class TaskController extends Controller
         {
             $task = Task::find($id);
 
-            if ($task)
+            if($task)
             {
-                $task->delete();
+                //$task->delete();
+                $task->deleted = true;
+                $task->deleted_at = Date::now();
+                $task->save();
+
                 return response()->json(["Task id '{$id}' deleted"], 200);
             }
             else
@@ -82,7 +101,7 @@ class TaskController extends Controller
                 return response()->json(["Error" => "Task id '{$id}' not found"], 400);
             }
         }
-        catch (\Exception $e)
+        catch(\Exception $e)
         {
             return response("Error: {$e}", 400);
         }
